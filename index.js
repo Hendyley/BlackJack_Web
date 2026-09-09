@@ -3,6 +3,7 @@ const playerEL = document.getElementById("player-el")
 const messageEL = document.getElementById("message-el")
 const sumEL = document.querySelector("#sum-el")
 const cardsEL = document.getElementById("cards-el")
+const dealercardsEL = document.getElementById("dealercards-el")
 const recordContainer = document.getElementById("gamerecord-el")
 const inputEL = document.getElementById("input-el")
 
@@ -20,14 +21,17 @@ let message = ""
 
 let deck = ['A', 2,3,4,5,6,7,8,9,10, 'J','Q','K']
 let cardAppearance = Array(14).fill(0)
-let handcount = 0
+let handCount = 0
 
 
-// let dealerSum = getRandomCard() + getRandomCard
+let dealerHand = []
+let dealerSum = 0
+let dealerHandcount = 0
+
 let nameinfo = localStorage.getItem("BlackJack_PlayerName")
 let chipinfo = localStorage.getItem("BlackJack_PlayerChip")
 
-console.log(`${nameinfo} ${chipinfo}`)
+// console.log(`${nameinfo} ${chipinfo}`)
 
 if(!nameinfo)
 {
@@ -59,17 +63,23 @@ function startGame()
     {
         isAlive = true
         hasBlackJack = false
-        cardsdrawn = []
-        sum = 0
+        
         deck = ['A', 2,3,4,5,6,7,8,9,10, 'J','Q','K']
         cardAppearance = Array(14).fill(0)
         player.chips -= 10
-        
         playerEL.textContent = player.name+": $"+ player.chips 
-        let firstCard = getRandomCard()
-        let secondCard = getRandomCard()
-        sum = firstCard + secondCard
-        handcount = 2
+        
+        cardsdrawn = []
+        sum = 0
+        sum = getRandomCard(cardsdrawn,sum) + getRandomCard(cardsdrawn,sum)
+        handCount = 2
+        
+        dealerHand = []
+        dealerSum = 0
+        dealerSum = getRandomCard(dealerHand,dealerSum) + getRandomCard(dealerHand,dealerSum)
+        dealerHandcount = 2
+        dealercardsEL.textContent = ""
+
         renderGame()
     }
     else
@@ -147,13 +157,13 @@ function newCard()
     }
     else
     {
-        let nextCard = getRandomCard()
+        let nextCard = getRandomCard(cardsdrawn, sum)
         sum += nextCard
         renderGame()
-        handcount++
+        handCount++
     }
 
-    if (handcount === 5)
+    if (handCount === 5)
     {
         stayPoint()
     }
@@ -162,21 +172,21 @@ function newCard()
     
 }
 
-function getRandomCard()
+function getRandomCard(drawn, sum)
 {
     let pick = Math.floor(Math.random()*12)
     let cardvalue = deck[pick]
     // console.log("Random Card: "+cardvalue+" from "+ pick+ " appear: "+cardAppearance[pick]+" times")
     if (cardAppearance[pick] > 4)
     {
-        cardvalue = getRandomCard()
+        cardvalue = getRandomCard(drawn, sum)
     }
     else
     {
         cardAppearance[pick]++
     }
     
-    cardsdrawn.push(cardvalue)
+    drawn.push(cardvalue)
     if(cardvalue === 'J' || cardvalue === 'Q' || cardvalue === 'K')
     {
         return 10
@@ -206,9 +216,39 @@ function stayPoint()
     } 
     else
     {
-        let dealerSum = Math.floor(Math.random()*7)+15
+        // let dealerSum = Math.floor(Math.random()*7)+15
+        while(dealerSum < 17 && dealerHandcount < 5)
+        {
+            dealerSum += getRandomCard(dealerHand, dealerSum)
+            dealerHandcount++
+            console.log(`Dealer: ${dealerSum}`)
+            if(dealerSum > 21)
+            {
+                for(let i=0; i<dealerHand.length; i++)
+                {
+                    if(dealerHand[i]==='A')
+                    {
+                        dealerHand[i] = 1
+                        dealerSum -= 10
+                        break
+                    }
 
-        if(dealerSum < sum)
+                }
+            }
+        }
+
+        if (dealerSum > 21)
+        {
+            message = "Dealer Burst with "+dealerSum+". You Win !!"
+            player.chips += 30
+            GameRecords.push("WIN!   +30 ")
+        }
+        else if (dealerSum === 21)
+        {
+            message = "Dealer Got BlackJack. You Lose !!"
+            GameRecords.push("Lose!  -10 ")
+        }
+        else if (dealerSum < sum)
         {
             message = "Dealer Got "+dealerSum+". You Win !!"
             player.chips += 30
@@ -221,11 +261,18 @@ function stayPoint()
         }
         else
         {
-            message = "Dealer Got "+dealerSum+". You lose !!"
+            message = "Dealer Got "+dealerSum+". You Lose !!"
             GameRecords.push("Lose!  -10 ")
         }
         KeepRecord()
         isAlive = false
+
+        let dcardtext = "Dealer Cards: " + dealerHand[0]
+        for(let i=1; i<dealerHand.length; i++)
+        {
+            dcardtext += " - " + dealerHand[i]
+        }
+        dealercardsEL.textContent = dcardtext
     }
 
     messageEL.textContent = message
